@@ -243,6 +243,18 @@
         <button class="btn btn-sm" data-stance="switch">Switch</button>
       </div>
     </div>
+    <div class="option-group">
+      <label>Category Filter</label>
+      <div class="controls" id="categoryBtns">
+        <button class="btn active btn-sm" data-category="all">All</button>
+        <button class="btn btn-sm" data-category="flip">🔄 Flips</button>
+        <button class="btn btn-sm" data-category="shove">🔃 Shove-Its</button>
+        <button class="btn btn-sm" data-category="rotation">🌀 Rotations</button>
+        <button class="btn btn-sm" data-category="basics">📗 Basics</button>
+        <button class="btn btn-sm" data-category="balance">⚖️ Balance</button>
+        <button class="btn btn-sm" data-category="old_school">🎩 Old School</button>
+      </div>
+    </div>
   </div>
 
   <button class="generate-btn" id="generateBtn">🔥 Cook a Combo</button>
@@ -264,6 +276,7 @@
     let tricksData = null;
     let currentLevel = 'intermediate';
     let currentStance = 'all';
+    let currentCategory = 'all';
     let history = [];
 
     async function loadTricks() {
@@ -276,6 +289,7 @@
       return tricksData.tricks.filter(t => {
         if (t.difficulty > level.max_difficulty) return false;
         if (currentStance !== 'all' && !t.stance.includes(currentStance)) return false;
+        if (currentCategory !== 'all' && t.category !== currentCategory) return false;
         return true;
       });
     }
@@ -382,6 +396,14 @@
       document.querySelectorAll('#stanceBtns .btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentStance = btn.dataset.stance;
+    });
+
+    document.getElementById('categoryBtns').addEventListener('click', e => {
+      const btn = e.target.closest('[data-category]');
+      if (!btn) return;
+      document.querySelectorAll('#categoryBtns .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = btn.dataset.category;
     });
 
     document.getElementById('generateBtn').addEventListener('click', () => {
