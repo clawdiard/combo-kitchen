@@ -400,6 +400,132 @@
     }
     .timer-streak.active { display: block; }
     .timer-streak strong { color: var(--accent); }
+    /* Mode Tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid var(--secondary);
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 0.6rem 1.2rem;
+      background: transparent;
+      color: var(--text-dim);
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-tab.active {
+      background: var(--secondary);
+      color: var(--text);
+    }
+    .mode-tab:hover:not(.active) { background: rgba(255,255,255,0.05); }
+
+    /* Builder Panel */
+    .builder-panel {
+      display: none;
+      width: 90%;
+      max-width: 700px;
+      margin: 1rem 0;
+    }
+    .builder-panel.active { display: block; }
+    .trick-search-input {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      border: 2px solid var(--secondary);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      outline: none;
+    }
+    .trick-search-input:focus { border-color: var(--primary); }
+    .builder-trick-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      background: var(--surface);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+    .builder-trick-chip {
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .builder-trick-chip:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .builder-trick-chip .chip-diff {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      margin-left: 0.3rem;
+    }
+    .builder-workspace {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 1rem;
+    }
+    .builder-combo { min-height: 60px; }
+    .builder-empty { color: var(--text-dim); text-align: center; padding: 1rem; font-size: 0.9rem; }
+    .builder-combo-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.3rem;
+    }
+    .builder-combo-item .trick-label { font-weight: 600; }
+    .builder-combo-item .remove-trick {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0 0.3rem;
+    }
+    .builder-combo-item .remove-trick:hover { color: var(--primary); }
+    .builder-connector-select {
+      display: flex;
+      justify-content: center;
+      padding: 0.2rem 0;
+    }
+    .builder-connector-select select {
+      background: var(--bg);
+      color: var(--accent);
+      border: 1px solid var(--secondary);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .builder-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
   </style>
 </head>
 <body>
@@ -463,7 +589,30 @@
 
   <div class="timer-streak" id="timerStreak">🔥 Streak: <strong id="streakCount">0</strong></div>
 
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="random">🎲 Random</button>
+    <button class="mode-tab" data-mode="builder">🛠️ Build Your Own</button>
+  </div>
+
   <button class="generate-btn" id="generateBtn">🔥 Cook a Combo</button>
+
+  <!-- Builder Mode UI -->
+  <div class="builder-panel" id="builderPanel">
+    <div class="builder-search">
+      <input type="text" id="trickSearch" placeholder="Search tricks..." class="trick-search-input">
+    </div>
+    <div class="builder-trick-list" id="builderTrickList"></div>
+    <div class="builder-workspace">
+      <h3 style="color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;font-size:0.8rem;margin-bottom:0.75rem">Your Combo</h3>
+      <div class="builder-combo" id="builderCombo">
+        <div class="builder-empty">Pick tricks from above to build your combo</div>
+      </div>
+      <div class="builder-actions" id="builderActions" style="display:none">
+        <button class="btn btn-sm" id="builderClear">🗑️ Clear</button>
+        <button class="generate-btn" id="builderCook" style="font-size:1rem;padding:0.6rem 1.5rem">🍳 Cook It!</button>
+      </div>
+    </div>
+  </div>
 
   <div class="timer-display" id="timerDisplay">0:00</div>
   <div class="timer-bar-container" id="timerBarContainer"><div class="timer-bar" id="timerBar"></div></div>
@@ -1060,6 +1209,111 @@
 
       display.appendChild(actionsDiv);
     };
+
+    // --- Mode Tabs (Random vs Builder) ---
+    let currentMode = 'random';
+    const builderPanel = document.getElementById('builderPanel');
+    const builderTrickList = document.getElementById('builderTrickList');
+    const builderCombo = document.getElementById('builderCombo');
+    const builderActions = document.getElementById('builderActions');
+    const trickSearchInput = document.getElementById('trickSearch');
+    let builderTricks = []; // [{trick, connector}]
+
+    document.querySelector('.mode-tabs').addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (!tab) return;
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentMode = tab.dataset.mode;
+      document.getElementById('generateBtn').style.display = currentMode === 'random' ? '' : 'none';
+      builderPanel.classList.toggle('active', currentMode === 'builder');
+      if (currentMode === 'builder') refreshBuilderTricks();
+    });
+
+    function refreshBuilderTricks(filter = '') {
+      if (!tricksData) return;
+      const tricks = getFilteredTricks();
+      const lower = filter.toLowerCase();
+      const filtered = lower ? tricks.filter(t => t.name.toLowerCase().includes(lower)) : tricks;
+      builderTrickList.innerHTML = filtered.map(t =>
+        `<div class="builder-trick-chip" data-trick="${t.name}">${t.name}<span class="chip-diff">★${t.difficulty}</span></div>`
+      ).join('');
+    }
+
+    trickSearchInput.addEventListener('input', () => refreshBuilderTricks(trickSearchInput.value));
+
+    // Also refresh when filters change
+    ['levelBtns', 'stanceBtns', 'categoryBtns'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => {
+        setTimeout(() => { if (currentMode === 'builder') refreshBuilderTricks(trickSearchInput.value); }, 10);
+      });
+    });
+
+    builderTrickList.addEventListener('click', e => {
+      const chip = e.target.closest('.builder-trick-chip');
+      if (!chip || !tricksData) return;
+      const trick = tricksData.tricks.find(t => t.name === chip.dataset.trick);
+      if (!trick) return;
+      builderTricks.push({ trick, connector: 'into' });
+      renderBuilderCombo();
+    });
+
+    function renderBuilderCombo() {
+      if (builderTricks.length === 0) {
+        builderCombo.innerHTML = '<div class="builder-empty">Pick tricks from above to build your combo</div>';
+        builderActions.style.display = 'none';
+        return;
+      }
+      builderActions.style.display = 'flex';
+      const connectors = tricksData ? tricksData.connectors : [{name:'into'},{name:'to'},{name:'late'},{name:'to fakie'}];
+      let html = '';
+      builderTricks.forEach((item, i) => {
+        html += `<div class="builder-combo-item">
+          <span class="trick-label">${item.trick.name}</span>
+          <button class="remove-trick" data-idx="${i}">✕</button>
+        </div>`;
+        if (i < builderTricks.length - 1) {
+          html += `<div class="builder-connector-select">
+            <select data-conn-idx="${i}">
+              ${connectors.map(c => `<option value="${c.name}"${c.name === item.connector ? ' selected' : ''}>${c.name}</option>`).join('')}
+            </select>
+          </div>`;
+        }
+      });
+      builderCombo.innerHTML = html;
+    }
+
+    builderCombo.addEventListener('click', e => {
+      const btn = e.target.closest('.remove-trick');
+      if (!btn) return;
+      builderTricks.splice(parseInt(btn.dataset.idx), 1);
+      renderBuilderCombo();
+    });
+
+    builderCombo.addEventListener('change', e => {
+      if (e.target.dataset.connIdx !== undefined) {
+        builderTricks[parseInt(e.target.dataset.connIdx)].connector = e.target.value;
+      }
+    });
+
+    document.getElementById('builderClear').addEventListener('click', () => {
+      builderTricks = [];
+      renderBuilderCombo();
+    });
+
+    document.getElementById('builderCook').addEventListener('click', () => {
+      if (builderTricks.length < 2 || !tricksData) return;
+      const combo = builderTricks.map(b => b.trick);
+      const conns = builderTricks.slice(0, -1).map(b => {
+        const found = tricksData.connectors.find(c => c.name === b.connector);
+        return found || { name: b.connector, difficulty_add: 0 };
+      });
+      const totalDiff = combo.reduce((s, t) => s + t.difficulty, 0) + conns.reduce((s, c) => s + c.difficulty_add, 0);
+      const result = { combo, connectors: conns, totalDifficulty: totalDiff };
+      renderCombo(result);
+      addToHistory(result);
+      if (timerEnabled) setTimeout(() => startTimer(result), 100);
+    });
 
     loadSharedCombo();
 
