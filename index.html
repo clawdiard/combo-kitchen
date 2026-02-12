@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combo Kitchen 🍳🛹 — Skateboarding Trick Combo Generator</title>
+  <meta name="description" content="Generate random skateboarding trick combos for your practice sessions. Pick your skill level and cook up fresh lines.">
+  <meta property="og:title" content="Combo Kitchen — Skate Trick Combo Generator">
+  <meta property="og:description" content="Cook up fresh skateboarding trick combos for your next session.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://clawdiard.github.io/combo-kitchen/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --primary: #e94560;
+      --secondary: #0f3460;
+      --text: #eee;
+      --text-dim: #999;
+      --accent: #f5c518;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      text-align: center;
+      padding: 2rem 1rem 1rem;
+    }
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+    header h1 span { color: var(--primary); }
+    header p {
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+      font-size: 1.05rem;
+    }
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1.5rem 0;
+    }
+    .btn {
+      padding: 0.65rem 1.4rem;
+      border: 2px solid var(--secondary);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--primary); }
+    .btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .generate-btn {
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      padding: 1rem 2.5rem;
+      border-radius: 999px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+      margin: 0.5rem 0 1.5rem;
+    }
+    .generate-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 30px rgba(233, 69, 96, 0.5);
+    }
+    .generate-btn:active { transform: scale(0.98); }
+    .combo-display {
+      width: 90%;
+      max-width: 700px;
+      min-height: 200px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .combo-display.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 1.1rem;
+    }
+    .combo-tricks {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .trick-card {
+      background: var(--secondary);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: slideIn 0.3s ease-out;
+    }
+    .trick-card:nth-child(even) { animation-delay: 0.05s; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .trick-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .trick-meta {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .trick-stance {
+      font-size: 0.75rem;
+      background: rgba(255,255,255,0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .trick-difficulty {
+      display: flex;
+      gap: 2px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .dot.filled { background: var(--accent); }
+    .connector {
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .combo-stats {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+    .combo-stats strong { color: var(--accent); }
+    .history {
+      width: 90%;
+      max-width: 700px;
+      margin: 1rem 0 3rem;
+    }
+    .history h3 {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.75rem;
+    }
+    .history-item {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .history-item:hover { background: var(--secondary); }
+    .options-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 0.5rem;
+    }
+    .option-group label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 0.3rem;
+      text-align: center;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍳 Combo <span>Kitchen</span></h1>
+    <p>Cook up fresh trick combos for your next session</p>
+  </header>
+
+  <div class="controls" id="levelBtns">
+    <button class="btn" data-level="beginner">🟢 Beginner</button>
+    <button class="btn active" data-level="intermediate">🟡 Intermediate</button>
+    <button class="btn" data-level="advanced">🟠 Advanced</button>
+    <button class="btn" data-level="pro">🔴 Pro</button>
+  </div>
+
+  <div class="options-row">
+    <div class="option-group">
+      <label>Stance Filter</label>
+      <div class="controls" id="stanceBtns">
+        <button class="btn active btn-sm" data-stance="all">All</button>
+        <button class="btn btn-sm" data-stance="regular">Regular</button>
+        <button class="btn btn-sm" data-stance="nollie">Nollie</button>
+        <button class="btn btn-sm" data-stance="fakie">Fakie</button>
+        <button class="btn btn-sm" data-stance="switch">Switch</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="generateBtn">🔥 Cook a Combo</button>
+
+  <div class="combo-display empty" id="comboDisplay">
+    <span>Hit the button to generate your first combo!</span>
+  </div>
+
+  <div class="history" id="historySection" style="display:none">
+    <h3>🕐 Recent Combos</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <footer>
+    <p>Built by <a href="https://github.com/clawdiard">Clawdia</a> · <a href="https://github.com/clawdiard/combo-kitchen">Source</a></p>
+  </footer>
+
+  <script>
+    let tricksData = null;
+    let currentLevel = 'intermediate';
+    let currentStance = 'all';
+    let history = [];
+
+    async function loadTricks() {
+      const res = await fetch('data/tricks.json');
+      tricksData = await res.json();
+    }
+
+    function getFilteredTricks() {
+      const level = tricksData.skill_levels[currentLevel];
+      return tricksData.tricks.filter(t => {
+        if (t.difficulty > level.max_difficulty) return false;
+        if (currentStance !== 'all' && !t.stance.includes(currentStance)) return false;
+        return true;
+      });
+    }
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    function generateCombo() {
+      const level = tricksData.skill_levels[currentLevel];
+      const tricks = getFilteredTricks();
+      if (tricks.length < 2) return null;
+
+      const len = randInt(level.combo_length[0], level.combo_length[1]);
+      const combo = [];
+      const connectors = [];
+      const used = new Set();
+
+      for (let i = 0; i < len; i++) {
+        let available = tricks.filter(t => !used.has(t.name));
+        if (available.length === 0) available = tricks;
+        const t = pick(available);
+        used.add(t.name);
+        combo.push(t);
+        if (i < len - 1) connectors.push(pick(tricksData.connectors));
+      }
+
+      const totalDiff = combo.reduce((s, t) => s + t.difficulty, 0) +
+        connectors.reduce((s, c) => s + c.difficulty_add, 0);
+
+      return { combo, connectors, totalDifficulty: totalDiff };
+    }
+
+    function renderDots(diff, max = 8) {
+      let html = '';
+      for (let i = 1; i <= max; i++) {
+        html += `<div class="dot${i <= diff ? ' filled' : ''}"></div>`;
+      }
+      return html;
+    }
+
+    function renderCombo(result) {
+      const display = document.getElementById('comboDisplay');
+      display.classList.remove('empty');
+
+      let html = '<div class="combo-tricks">';
+      result.combo.forEach((trick, i) => {
+        html += `<div class="trick-card">
+          <span class="trick-name">${trick.name}</span>
+          <div class="trick-meta">
+            <span class="trick-stance">${trick.stance[0]}</span>
+            <div class="trick-difficulty">${renderDots(trick.difficulty)}</div>
+          </div>
+        </div>`;
+        if (i < result.combo.length - 1) {
+          html += `<div class="connector">↓ ${result.connectors[i].name}</div>`;
+        }
+      });
+      html += '</div>';
+      html += `<div class="combo-stats">
+        <span>Tricks: <strong>${result.combo.length}</strong></span>
+        <span>Total Difficulty: <strong>${result.totalDifficulty}</strong></span>
+        <span>Level: <strong>${currentLevel}</strong></span>
+      </div>`;
+
+      display.innerHTML = html;
+    }
+
+    function comboToString(result) {
+      return result.combo.map(t => t.name).join(' → ');
+    }
+
+    function addToHistory(result) {
+      const str = comboToString(result);
+      history.unshift({ text: str, result, level: currentLevel });
+      if (history.length > 10) history.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const section = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+      if (history.length === 0) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      list.innerHTML = history.map((h, i) =>
+        `<div class="history-item" onclick="replayHistory(${i})">${h.text} <span style="color:var(--text-dim);font-size:0.8rem">(${h.level})</span></div>`
+      ).join('');
+    }
+
+    window.replayHistory = function(i) {
+      renderCombo(history[i].result);
+    };
+
+    document.getElementById('levelBtns').addEventListener('click', e => {
+      const btn = e.target.closest('[data-level]');
+      if (!btn) return;
+      document.querySelectorAll('#levelBtns .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentLevel = btn.dataset.level;
+    });
+
+    document.getElementById('stanceBtns').addEventListener('click', e => {
+      const btn = e.target.closest('[data-stance]');
+      if (!btn) return;
+      document.querySelectorAll('#stanceBtns .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStance = btn.dataset.stance;
+    });
+
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      if (!tricksData) return;
+      const result = generateCombo();
+      if (!result) {
+        document.getElementById('comboDisplay').innerHTML = '<span>Not enough tricks for this filter combo. Try different settings!</span>';
+        return;
+      }
+      renderCombo(result);
+      addToHistory(result);
+    });
+
+    loadTricks();
+  </script>
+</body>
+</html>
