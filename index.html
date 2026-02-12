@@ -210,6 +210,43 @@
       margin-bottom: 0.3rem;
       text-align: center;
     }
+    .fav-btn {
+      background: none;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
+    }
+    .fav-btn:hover { background: var(--primary); color: #fff; }
+    .fav-btn.saved { background: var(--primary); color: #fff; }
+    .favorites { width: 90%; max-width: 600px; margin: 1.5rem auto; }
+    .favorites h3 { color: var(--accent); margin-bottom: 0.75rem; }
+    .fav-item {
+      background: var(--surface);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .fav-item:hover { outline: 1px solid var(--primary); }
+    .fav-item .fav-text { flex: 1; }
+    .fav-item .fav-meta { color: var(--text-dim); font-size: 0.8rem; margin-top: 0.2rem; }
+    .fav-remove {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0.25rem 0.5rem;
+    }
+    .fav-remove:hover { color: var(--primary); }
     footer {
       text-align: center;
       padding: 2rem;
@@ -266,6 +303,11 @@
   <div class="history" id="historySection" style="display:none">
     <h3>🕐 Recent Combos</h3>
     <div id="historyList"></div>
+  </div>
+
+  <div class="favorites" id="favoritesSection" style="display:none">
+    <h3>⭐ Favorite Combos</h3>
+    <div id="favoritesList"></div>
   </div>
 
   <footer>
@@ -416,6 +458,95 @@
       renderCombo(result);
       addToHistory(result);
     });
+
+    // --- Favorites (localStorage) ---
+    let favorites = JSON.parse(localStorage.getItem('comboKitchen_favorites') || '[]');
+    let lastGeneratedResult = null;
+
+    function saveFavorites() {
+      localStorage.setItem('comboKitchen_favorites', JSON.stringify(favorites));
+    }
+
+    function comboKey(result) {
+      return result.combo.map(t => t.name).join('|');
+    }
+
+    function isFavorited(result) {
+      const key = comboKey(result);
+      return favorites.some(f => f.key === key);
+    }
+
+    function toggleFavorite(result) {
+      const key = comboKey(result);
+      const idx = favorites.findIndex(f => f.key === key);
+      if (idx >= 0) {
+        favorites.splice(idx, 1);
+      } else {
+        favorites.unshift({
+          key,
+          text: comboToString(result),
+          result,
+          level: currentLevel,
+          savedAt: new Date().toISOString()
+        });
+      }
+      saveFavorites();
+      updateFavButton(result);
+      renderFavorites();
+    }
+
+    function updateFavButton(result) {
+      const btn = document.getElementById('favBtn');
+      if (!btn) return;
+      const faved = isFavorited(result);
+      btn.textContent = faved ? '⭐ Saved!' : '🤍 Save to Favorites';
+      btn.classList.toggle('saved', faved);
+    }
+
+    function renderFavorites() {
+      const section = document.getElementById('favoritesSection');
+      const list = document.getElementById('favoritesList');
+      if (favorites.length === 0) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      list.innerHTML = favorites.map((f, i) =>
+        `<div class="fav-item">
+          <div class="fav-text" onclick="replayFavorite(${i})">
+            ${f.text}
+            <div class="fav-meta">${f.level} · saved ${new Date(f.savedAt).toLocaleDateString()}</div>
+          </div>
+          <button class="fav-remove" onclick="removeFavorite(${i})" title="Remove">✕</button>
+        </div>`
+      ).join('');
+    }
+
+    window.replayFavorite = function(i) {
+      lastGeneratedResult = favorites[i].result;
+      renderCombo(favorites[i].result);
+      updateFavButton(favorites[i].result);
+    };
+
+    window.removeFavorite = function(i) {
+      favorites.splice(i, 1);
+      saveFavorites();
+      renderFavorites();
+      if (lastGeneratedResult) updateFavButton(lastGeneratedResult);
+    };
+
+    // Patch renderCombo to add fav button
+    const _origRenderCombo = renderCombo;
+    renderCombo = function(result) {
+      _origRenderCombo(result);
+      lastGeneratedResult = result;
+      const display = document.getElementById('comboDisplay');
+      const btn = document.createElement('button');
+      btn.id = 'favBtn';
+      btn.className = 'fav-btn' + (isFavorited(result) ? ' saved' : '');
+      btn.textContent = isFavorited(result) ? '⭐ Saved!' : '🤍 Save to Favorites';
+      btn.onclick = () => toggleFavorite(result);
+      display.appendChild(btn);
+    };
+
+    renderFavorites();
 
     loadTricks();
   </script>
