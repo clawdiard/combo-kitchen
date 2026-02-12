@@ -254,6 +254,135 @@
       font-size: 0.85rem;
     }
     footer a { color: var(--primary); text-decoration: none; }
+    /* Timer Mode */
+    .timer-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .timer-toggle label {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      cursor: pointer;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--secondary);
+      border-radius: 999px;
+      transition: background 0.2s;
+    }
+    .toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      left: 3px; top: 3px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--primary);
+    }
+    .toggle-switch input:checked + .toggle-slider::after {
+      transform: translateX(22px);
+      background: #fff;
+    }
+    .timer-bar-container {
+      width: 90%;
+      max-width: 700px;
+      height: 8px;
+      background: var(--secondary);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0 auto 1rem;
+      display: none;
+    }
+    .timer-bar-container.active { display: block; }
+    .timer-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.1s linear, background 0.3s;
+      width: 100%;
+    }
+    .timer-bar.warning { background: #ff9800; }
+    .timer-bar.danger { background: var(--primary); }
+    .timer-display {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.5rem;
+      display: none;
+    }
+    .timer-display.active { display: block; }
+    .timer-display.warning { color: #ff9800; }
+    .timer-display.danger { color: var(--primary); animation: pulse 0.5s infinite alternate; }
+    @keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+    .timer-result {
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .timer-result.success { color: #4caf50; }
+    .timer-result.fail { color: var(--primary); }
+    .timer-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .timer-actions.active { display: flex; }
+    .timer-btn {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .timer-btn:hover { transform: scale(1.05); }
+    .timer-btn.landed { background: #4caf50; color: #fff; }
+    .timer-btn.bail { background: var(--secondary); color: var(--text); border: 2px solid var(--text-dim); }
+    .timer-settings {
+      display: none;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      align-items: center;
+    }
+    .timer-settings.active { display: flex; }
+    .timer-settings label { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .timer-settings select {
+      background: var(--surface);
+      color: var(--text);
+      border: 2px solid var(--secondary);
+      border-radius: 8px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.9rem;
+    }
+    .timer-streak {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+      display: none;
+    }
+    .timer-streak.active { display: block; }
+    .timer-streak strong { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -294,7 +423,38 @@
     </div>
   </div>
 
+  <div class="timer-toggle">
+    <label for="timerToggle">⏱️ Timer Mode</label>
+    <div class="toggle-switch">
+      <input type="checkbox" id="timerToggle">
+      <div class="toggle-slider"></div>
+    </div>
+  </div>
+
+  <div class="timer-settings" id="timerSettings">
+    <label>Time Limit</label>
+    <select id="timerDuration">
+      <option value="auto">Auto (by difficulty)</option>
+      <option value="15">15s</option>
+      <option value="30">30s</option>
+      <option value="45">45s</option>
+      <option value="60">60s</option>
+      <option value="90">90s</option>
+      <option value="120">2min</option>
+    </select>
+  </div>
+
+  <div class="timer-streak" id="timerStreak">🔥 Streak: <strong id="streakCount">0</strong></div>
+
   <button class="generate-btn" id="generateBtn">🔥 Cook a Combo</button>
+
+  <div class="timer-display" id="timerDisplay">0:00</div>
+  <div class="timer-bar-container" id="timerBarContainer"><div class="timer-bar" id="timerBar"></div></div>
+  <div id="timerResult"></div>
+  <div class="timer-actions" id="timerActions">
+    <button class="timer-btn landed" id="landedBtn">✅ Landed!</button>
+    <button class="timer-btn bail" id="bailBtn">💀 Bailed</button>
+  </div>
 
   <div class="combo-display empty" id="comboDisplay">
     <span>Hit the button to generate your first combo!</span>
@@ -547,6 +707,137 @@
     };
 
     renderFavorites();
+
+    // --- Timer Mode ---
+    let timerEnabled = false;
+    let timerInterval = null;
+    let timerStart = 0;
+    let timerDurationMs = 0;
+    let timerStreak = parseInt(localStorage.getItem('comboKitchen_streak') || '0');
+    let timerRunning = false;
+
+    const timerToggle = document.getElementById('timerToggle');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerBarContainer = document.getElementById('timerBarContainer');
+    const timerBar = document.getElementById('timerBar');
+    const timerResult = document.getElementById('timerResult');
+    const timerActions = document.getElementById('timerActions');
+    const timerSettings = document.getElementById('timerSettings');
+    const timerStreakEl = document.getElementById('timerStreak');
+    const streakCount = document.getElementById('streakCount');
+    const timerDurationSelect = document.getElementById('timerDuration');
+
+    function updateStreakDisplay() {
+      streakCount.textContent = timerStreak;
+      if (timerEnabled) timerStreakEl.classList.add('active');
+      else timerStreakEl.classList.remove('active');
+    }
+
+    timerToggle.addEventListener('change', () => {
+      timerEnabled = timerToggle.checked;
+      timerSettings.classList.toggle('active', timerEnabled);
+      updateStreakDisplay();
+      if (!timerEnabled) stopTimer();
+    });
+
+    function calcAutoTime(result) {
+      // ~5s per difficulty point, min 10s, max 120s
+      const total = result.totalDifficulty;
+      return Math.min(120, Math.max(10, total * 5)) * 1000;
+    }
+
+    function startTimer(result) {
+      stopTimer();
+      const sel = timerDurationSelect.value;
+      timerDurationMs = sel === 'auto' ? calcAutoTime(result) : parseInt(sel) * 1000;
+      timerStart = Date.now();
+      timerRunning = true;
+
+      timerDisplay.classList.add('active');
+      timerBarContainer.classList.add('active');
+      timerActions.classList.add('active');
+      timerResult.innerHTML = '';
+      timerResult.className = 'timer-result';
+      timerBar.style.width = '100%';
+      timerBar.className = 'timer-bar';
+      timerDisplay.className = 'timer-display active';
+
+      timerInterval = setInterval(() => {
+        const elapsed = Date.now() - timerStart;
+        const remaining = Math.max(0, timerDurationMs - elapsed);
+        const pct = (remaining / timerDurationMs) * 100;
+
+        // Update display
+        const secs = Math.ceil(remaining / 1000);
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        timerDisplay.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+
+        // Update bar
+        timerBar.style.width = pct + '%';
+
+        // Color states
+        timerBar.className = 'timer-bar' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+        timerDisplay.className = 'timer-display active' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+
+        if (remaining <= 0) {
+          endTimer(false);
+        }
+      }, 50);
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      timerRunning = false;
+      timerDisplay.classList.remove('active');
+      timerBarContainer.classList.remove('active');
+      timerActions.classList.remove('active');
+    }
+
+    function endTimer(landed) {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      timerRunning = false;
+      timerActions.classList.remove('active');
+      timerBarContainer.classList.remove('active');
+
+      const elapsed = ((Date.now() - timerStart) / 1000).toFixed(1);
+
+      if (landed) {
+        timerStreak++;
+        timerDisplay.textContent = '🎉';
+        timerDisplay.className = 'timer-display active';
+        timerResult.className = 'timer-result success';
+        timerResult.innerHTML = `Landed in ${elapsed}s! Streak: ${timerStreak} 🔥`;
+      } else {
+        timerStreak = 0;
+        timerDisplay.textContent = '💀';
+        timerDisplay.className = 'timer-display active';
+        timerResult.className = 'timer-result fail';
+        timerResult.innerHTML = elapsed >= (timerDurationMs / 1000) ? `⏰ Time's up! Streak reset.` : `Bailed! Streak reset.`;
+      }
+
+      localStorage.setItem('comboKitchen_streak', timerStreak.toString());
+      updateStreakDisplay();
+
+      setTimeout(() => {
+        timerDisplay.classList.remove('active');
+      }, 2000);
+    }
+
+    document.getElementById('landedBtn').addEventListener('click', () => { if (timerRunning) endTimer(true); });
+    document.getElementById('bailBtn').addEventListener('click', () => { if (timerRunning) endTimer(false); });
+
+    updateStreakDisplay();
+
+    // Patch generate to start timer
+    const origGenClick = document.getElementById('generateBtn').onclick;
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      if (timerEnabled && lastGeneratedResult) {
+        setTimeout(() => startTimer(lastGeneratedResult), 100);
+      }
+    });
 
     loadTricks();
   </script>
