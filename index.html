@@ -223,6 +223,23 @@
     }
     .fav-btn:hover { background: var(--primary); color: #fff; }
     .fav-btn.saved { background: var(--primary); color: #fff; }
+    .share-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.75rem; margin-left: 0.5rem;
+      padding: 0.5rem 1.2rem; background: var(--secondary); color: var(--text);
+      border: 2px solid var(--text-dim); border-radius: 999px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .share-btn:hover { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .share-btn.copied { border-color: #4caf50; background: #4caf50; color: #fff; }
+    .combo-actions { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+    .share-toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: #4caf50; color: #fff; padding: 0.75rem 1.5rem; border-radius: 999px;
+      font-weight: 700; font-size: 0.95rem; z-index: 999; opacity: 0;
+      transition: all 0.3s ease; pointer-events: none;
+    }
+    .share-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     .favorites { width: 90%; max-width: 600px; margin: 1.5rem auto; }
     .favorites h3 { color: var(--accent); margin-bottom: 0.75rem; }
     .fav-item {
@@ -469,6 +486,8 @@
     <h3>⭐ Favorite Combos</h3>
     <div id="favoritesList"></div>
   </div>
+
+  <div class="share-toast" id="shareToast"></div>
 
   <footer>
     <p>Built by <a href="https://github.com/clawdiard">Clawdia</a> · <a href="https://github.com/clawdiard/combo-kitchen">Source</a></p>
@@ -838,6 +857,211 @@
         setTimeout(() => startTimer(lastGeneratedResult), 100);
       }
     });
+
+    // --- Share as Image / Link ---
+    function showToast(msg) {
+      const t = document.getElementById('shareToast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function comboToShareUrl(result) {
+      const tricks = result.combo.map(t => t.name);
+      const conns = result.connectors.map(c => c.name);
+      const params = new URLSearchParams({
+        t: tricks.join('|'),
+        c: conns.join('|'),
+        l: currentLevel
+      });
+      return `${location.origin}${location.pathname}?${params}`;
+    }
+
+    function generateComboImage(result) {
+      return new Promise(resolve => {
+        const W = 800, pad = 40;
+        const tricks = result.combo;
+        const conns = result.connectors;
+        const rowH = 54, connH = 30, headerH = 80, footerH = 50;
+        const H = headerH + tricks.length * rowH + conns.length * connH + footerH + pad * 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // Background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, W, H);
+
+        // Header
+        ctx.fillStyle = '#eee';
+        ctx.font = 'bold 32px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🍳 Combo Kitchen', W / 2, pad + 36);
+        ctx.fillStyle = '#999';
+        ctx.font = '16px system-ui, sans-serif';
+        ctx.fillText(`${currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)} · ${tricks.length} tricks · Difficulty ${result.totalDifficulty}`, W / 2, pad + 62);
+
+        let y = pad + headerH;
+
+        tricks.forEach((trick, i) => {
+          // Trick card bg
+          ctx.fillStyle = '#16213e';
+          const cardX = 60, cardW = W - 120, cardH = 44;
+          ctx.beginPath();
+          ctx.roundRect(cardX, y, cardW, cardH, 10);
+          ctx.fill();
+
+          // Trick name
+          ctx.fillStyle = '#eee';
+          ctx.font = 'bold 20px system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(trick.name, cardX + 16, y + 28);
+
+          // Stance badge
+          ctx.fillStyle = '#999';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(trick.stance[0], cardX + cardW - 16, y + 28);
+
+          // Difficulty dots
+          const dotR = 4, dotGap = 12, dotsX = cardX + cardW - 100;
+          for (let d = 0; d < 8; d++) {
+            ctx.beginPath();
+            ctx.arc(dotsX + d * dotGap, y + 28, dotR, 0, Math.PI * 2);
+            ctx.fillStyle = d < trick.difficulty ? '#e94560' : '#333';
+            ctx.fill();
+          }
+
+          y += rowH;
+
+          // Connector
+          if (i < conns.length) {
+            ctx.fillStyle = '#f5c518';
+            ctx.font = '14px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`↓ ${conns[i].name}`, W / 2, y + 18);
+            y += connH;
+          }
+        });
+
+        // Footer
+        y += 10;
+        ctx.fillStyle = '#666';
+        ctx.font = '13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('clawdiard.github.io/combo-kitchen', W / 2, y + 20);
+
+        canvas.toBlob(blob => resolve(blob), 'image/png');
+      });
+    }
+
+    async function shareCombo(result) {
+      const shareUrl = comboToShareUrl(result);
+      const text = `🍳 Combo Kitchen\n${comboToString(result)}\n${currentLevel} · Difficulty ${result.totalDifficulty}`;
+
+      // Try native share with image
+      if (navigator.canShare) {
+        try {
+          const blob = await generateComboImage(result);
+          const file = new File([blob], 'combo.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ text: text + '\n' + shareUrl, files: [file] });
+            return;
+          }
+        } catch (e) { if (e.name === 'AbortError') return; }
+      }
+
+      // Try native share without image
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Combo Kitchen', text, url: shareUrl });
+          return;
+        } catch (e) { if (e.name === 'AbortError') return; }
+      }
+
+      // Fallback: copy link
+      try {
+        await navigator.clipboard.writeText(text + '\n' + shareUrl);
+        showToast('📋 Combo copied to clipboard!');
+      } catch (e) {
+        showToast('Share URL: ' + shareUrl);
+      }
+    }
+
+    async function downloadComboImage(result) {
+      const blob = await generateComboImage(result);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'combo-kitchen.png';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('📸 Image downloaded!');
+    }
+
+    // Load shared combo from URL params
+    function loadSharedCombo() {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('t')) return;
+      const trickNames = params.get('t').split('|');
+      const connNames = params.get('c').split('|');
+      const level = params.get('l') || 'intermediate';
+
+      // Wait for tricks data
+      const check = setInterval(() => {
+        if (!tricksData) return;
+        clearInterval(check);
+
+        const tricks = trickNames.map(name => {
+          const found = tricksData.tricks.find(t => t.name === name);
+          return found || { name, difficulty: 0, stance: ['?'], category: 'unknown' };
+        });
+        const conns = connNames.map(name => {
+          const found = tricksData.connectors.find(c => c.name === name);
+          return found || { name, difficulty_add: 0 };
+        });
+        const totalDiff = tricks.reduce((s, t) => s + t.difficulty, 0) + conns.reduce((s, c) => s + c.difficulty_add, 0);
+
+        currentLevel = level;
+        document.querySelectorAll('#levelBtns .btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.level === level);
+        });
+
+        const result = { combo: tricks, connectors: conns, totalDifficulty: totalDiff };
+        renderCombo(result);
+        addToHistory(result);
+      }, 100);
+    }
+
+    // Patch renderCombo to add share buttons
+    const _shareRenderCombo = renderCombo;
+    renderCombo = function(result) {
+      _shareRenderCombo(result);
+      lastGeneratedResult = result;
+      const display = document.getElementById('comboDisplay');
+      // Wrap fav + share buttons in actions row
+      const favBtn = display.querySelector('.fav-btn');
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'combo-actions';
+      if (favBtn) actionsDiv.appendChild(favBtn);
+
+      const shareBtn = document.createElement('button');
+      shareBtn.className = 'share-btn';
+      shareBtn.innerHTML = '📤 Share';
+      shareBtn.onclick = () => shareCombo(result);
+      actionsDiv.appendChild(shareBtn);
+
+      const imgBtn = document.createElement('button');
+      imgBtn.className = 'share-btn';
+      imgBtn.innerHTML = '📸 Save Image';
+      imgBtn.onclick = () => downloadComboImage(result);
+      actionsDiv.appendChild(imgBtn);
+
+      display.appendChild(actionsDiv);
+    };
+
+    loadSharedCombo();
 
     loadTricks();
   </script>
