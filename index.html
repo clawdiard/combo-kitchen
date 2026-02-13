@@ -700,6 +700,25 @@
       return html;
     }
 
+    function deriveLevelFromDifficulty(totalDiff, trickCount) {
+      // Compute average difficulty per trick
+      const avg = trickCount > 0 ? totalDiff / trickCount : 0;
+      // Map average difficulty to level using skill_levels max_difficulty thresholds
+      if (tricksData && tricksData.skill_levels) {
+        const levels = ['beginner', 'intermediate', 'advanced', 'pro'];
+        for (let i = 0; i < levels.length; i++) {
+          const sl = tricksData.skill_levels[levels[i]];
+          if (sl && avg <= sl.max_difficulty) return levels[i];
+        }
+        return 'pro';
+      }
+      // Fallback if no tricksData
+      if (avg <= 2) return 'beginner';
+      if (avg <= 4) return 'intermediate';
+      if (avg <= 6) return 'advanced';
+      return 'pro';
+    }
+
     function renderCombo(result) {
       const display = document.getElementById('comboDisplay');
       display.classList.remove('empty');
@@ -721,7 +740,7 @@
       html += `<div class="combo-stats">
         <span>Tricks: <strong>${result.combo.length}</strong></span>
         <span>Total Difficulty: <strong>${result.totalDifficulty}</strong></span>
-        <span>Level: <strong>${currentLevel}</strong></span>
+        <span>Level: <strong>${deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length)}</strong></span>
       </div>`;
 
       display.innerHTML = html;
@@ -733,7 +752,8 @@
 
     function addToHistory(result) {
       const str = comboToString(result);
-      history.unshift({ text: str, result, level: currentLevel });
+      const derivedLevel = deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length);
+      history.unshift({ text: str, result, level: derivedLevel });
       if (history.length > 10) history.pop();
       renderHistory();
     }
@@ -814,7 +834,7 @@
           key,
           text: comboToString(result),
           result,
-          level: currentLevel,
+          level: deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length),
           savedAt: new Date().toISOString()
         });
       }
@@ -1049,7 +1069,8 @@
         ctx.fillText('🍳 Combo Kitchen', W / 2, pad + 36);
         ctx.fillStyle = '#999';
         ctx.font = '16px system-ui, sans-serif';
-        ctx.fillText(`${currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)} · ${tricks.length} tricks · Difficulty ${result.totalDifficulty}`, W / 2, pad + 62);
+        const imgLevel = deriveLevelFromDifficulty(result.totalDifficulty, tricks.length);
+        ctx.fillText(`${imgLevel.charAt(0).toUpperCase() + imgLevel.slice(1)} · ${tricks.length} tricks · Difficulty ${result.totalDifficulty}`, W / 2, pad + 62);
 
         let y = pad + headerH;
 
@@ -1107,7 +1128,8 @@
 
     async function shareCombo(result) {
       const shareUrl = comboToShareUrl(result);
-      const text = `🍳 Combo Kitchen\n${comboToString(result)}\n${currentLevel} · Difficulty ${result.totalDifficulty}`;
+      const shareLevel = deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length);
+      const text = `🍳 Combo Kitchen\n${comboToString(result)}\n${shareLevel} · Difficulty ${result.totalDifficulty}`;
 
       // Try native share with image
       if (navigator.canShare) {
