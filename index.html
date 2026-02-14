@@ -800,7 +800,9 @@
       if (!tricksData) return;
       const result = generateCombo();
       if (!result) {
-        document.getElementById('comboDisplay').innerHTML = '<span>Not enough tricks for this filter combo. Try different settings!</span>';
+        const display = document.getElementById('comboDisplay');
+        display.classList.add('empty');
+        display.innerHTML = '<span style="color:var(--accent);font-size:1.1rem;padding:1rem;">🍳 Not enough tricks for this filter combo.<br>Try a different difficulty level or stance!</span>';
         return;
       }
       renderCombo(result);
