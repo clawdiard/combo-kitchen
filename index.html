@@ -1254,6 +1254,12 @@
       currentMode = tab.dataset.mode;
       document.getElementById('generateBtn').style.display = currentMode === 'random' ? '' : 'none';
       builderPanel.classList.toggle('active', currentMode === 'builder');
+      // Clear error/empty state from comboDisplay on mode switch
+      const display = document.getElementById('comboDisplay');
+      if (display.classList.contains('empty')) {
+        display.classList.add('empty');
+        display.innerHTML = '<span style="opacity:.5">🍳 Your combo will appear here…</span>';
+      }
       if (currentMode === 'builder') refreshBuilderTricks();
     });
 
