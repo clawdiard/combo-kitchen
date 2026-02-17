@@ -655,6 +655,73 @@
     async function loadTricks() {
       const res = await fetch('data/tricks.json');
       tricksData = await res.json();
+      migrateFavorites();
+    }
+
+    // Schema version for favorites — bump when tricks.json changes
+    const FAVORITES_SCHEMA = 2;
+
+    function migrateFavorites() {
+      if (!tricksData || favorites.length === 0) return;
+      const trickNames = new Set(tricksData.tricks.map(t => t.name));
+      const trickMap = {};
+      tricksData.tricks.forEach(t => { trickMap[t.name] = t; });
+
+      // Build fuzzy name map for old → new (e.g. "Nollie" → "Nollie Ollie")
+      const nameMap = {};
+      tricksData.tricks.forEach(t => {
+        // Map shortened versions to full name
+        const words = t.name.split(' ');
+        if (words.length > 1) {
+          words.forEach(w => { if (!trickNames.has(w) && !nameMap[w]) nameMap[w] = t.name; });
+        }
+      });
+
+      let changed = false;
+      favorites.forEach(f => {
+        if (!f.result || !f.result.combo) return;
+
+        // Re-map trick names
+        f.result.combo.forEach(trick => {
+          if (!trickNames.has(trick.name) && nameMap[trick.name]) {
+            const newName = nameMap[trick.name];
+            const current = trickMap[newName];
+            trick.name = newName;
+            if (current) trick.difficulty = current.difficulty;
+            changed = true;
+          } else if (trickMap[trick.name] && trick.difficulty !== trickMap[trick.name].difficulty) {
+            trick.difficulty = trickMap[trick.name].difficulty;
+            changed = true;
+          }
+        });
+
+        // Recompute totalDifficulty
+        const newTotal = f.result.combo.reduce((s, t) => s + (t.difficulty || 0), 0);
+        if (newTotal !== f.result.totalDifficulty) {
+          f.result.totalDifficulty = newTotal;
+          changed = true;
+        }
+
+        // Recompute level
+        const newLevel = deriveLevelFromDifficulty(f.result.totalDifficulty, f.result.combo.length);
+        if (newLevel !== f.level) {
+          f.level = newLevel;
+          changed = true;
+        }
+
+        // Update display text
+        const newText = comboToString(f.result);
+        if (newText !== f.text) {
+          f.text = newText;
+          f.key = f.result.combo.map(t => t.name).join('|');
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        saveFavorites();
+        renderFavorites();
+      }
     }
 
     function getFilteredTricks() {
