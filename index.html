@@ -659,8 +659,10 @@
 
     function getFilteredTricks() {
       const level = tricksData.skill_levels[currentLevel];
+      const minDiff = level.min_difficulty || 1;
       return tricksData.tricks.filter(t => {
         if (t.difficulty > level.max_difficulty) return false;
+        if (t.difficulty < minDiff) return false;
         if (currentStance !== 'all' && !t.stance.includes(currentStance)) return false;
         if (currentCategory !== 'all' && t.category !== currentCategory) return false;
         return true;
