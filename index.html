@@ -800,7 +800,7 @@
         html += `<div class="trick-card">
           <span class="trick-name">${trick.name}</span>
           <div class="trick-meta">
-            <span class="trick-stance">${trick.stance[0]}</span>
+            <span class="trick-stance">${currentStance !== 'all' ? currentStance : trick.stance[0]}</span>
             <div class="trick-difficulty">${renderDots(trick.difficulty)}</div>
           </div>
         </div>`;
@@ -812,7 +812,7 @@
       html += `<div class="combo-stats">
         <span>Tricks: <strong>${result.combo.length}</strong></span>
         <span>Total Difficulty: <strong>${result.totalDifficulty}</strong></span>
-        <span>Level: <strong>${deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length)}</strong></span>
+        <span>Level: <strong>${currentLevel}</strong></span>
       </div>`;
 
       display.innerHTML = html;
@@ -824,8 +824,7 @@
 
     function addToHistory(result) {
       const str = comboToString(result);
-      const derivedLevel = deriveLevelFromDifficulty(result.totalDifficulty, result.combo.length);
-      history.unshift({ text: str, result, level: derivedLevel });
+      history.unshift({ text: str, result, level: currentLevel });
       if (history.length > 10) history.pop();
       renderHistory();
     }
